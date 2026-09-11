@@ -41,12 +41,15 @@ function cleanUrl(raw, extra) {
   }
   return url.href;
 }
+function entries(value) {
+  return Array.isArray(value) ? value.filter(plain) : [];
+}
 function body(post, extra) {
   if (!post) return null;
-  if (Array.isArray(post.params) && post.params.length)
+  if (entries(post.params).length)
     return {
       format: "parameters",
-      value: post.params.map((x) => ({
+      value: entries(post.params).map((x) => ({
         name: String(x.name ?? ""),
         value: x.fileName
           ? "[File omitted]"
@@ -71,6 +74,22 @@ function body(post, extra) {
     format: "omitted",
     value: "[Non-JSON body omitted; inspect the original locally]",
   };
+}
+function addExample(group, example) {
+  if (!group.examples.some((item) => item.status === example.status)) {
+    if (group.examples.length < 5) group.examples.push(example);
+    else {
+      const redundant = group.examples.findIndex((item, index) =>
+        group.examples.some(
+          (other, otherIndex) =>
+            otherIndex !== index && other.status === item.status,
+        ),
+      );
+      if (redundant >= 0) group.examples[redundant] = example;
+    }
+    return;
+  }
+  if (group.examples.length < 5) group.examples.push(example);
 }
 function responseExample(response, extra) {
   const content = response?.content;
@@ -130,44 +149,49 @@ export function collectHar(har, extra = []) {
     group.count++;
     const status = Number(entry.response?.status) || 0;
     if (!group.statuses.includes(status)) group.statuses.push(status);
-    const query = [...url.searchParams].map(([name, value]) => ({
-      name,
-      value,
-    }));
+    const seen = new Map();
+    const query = [...url.searchParams].map(([name, value]) => {
+      seen.set(name, (seen.get(name) ?? 0) + 1);
+      return {
+        name,
+        value,
+      };
+    });
     // HAR exporters can include queryString even when the URL does not.
-    for (const item of Array.isArray(request.queryString)
-      ? request.queryString
-      : []) {
+    for (const item of entries(request.queryString)) {
       const name = String(item.name ?? "");
-      if (!query.some((x) => x.name === name))
+      const value = isSensitive(name, extra)
+        ? MASK
+        : scrub(String(item.value ?? ""), extra);
+      const index = seen.get(name) ?? 0;
+      const urlValues = url.searchParams.getAll(name);
+      if (index >= urlValues.length) {
+        url.searchParams.append(name, value);
         query.push({
           name,
-          value: isSensitive(name, extra)
-            ? MASK
-            : scrub(String(item.value ?? ""), extra),
+          value,
         });
+      }
+      seen.set(name, index + 1);
     }
     for (const { name } of query)
       if (!group.queryNames.includes(name)) group.queryNames.push(name);
-    // Preserve a bounded set of examples; every request still contributes to counts and parameter names.
-    if (group.examples.length < 5)
-      group.examples.push({
-        url: url.href,
-        status,
-        query,
-        headers: (Array.isArray(request.headers) ? request.headers : []).map(
-          (x) => ({
-            name: String(x.name ?? ""),
-            value:
-              isSensitive(String(x.name), extra) ||
-              !safeHeaders.has(String(x.name).toLowerCase())
-                ? MASK
-                : String(x.value ?? ""),
-          }),
-        ),
-        body: body(request.postData, extra),
-        response: responseExample(entry.response, extra),
-      });
+    // Preserve a bounded representative set while every request still contributes to counts.
+    addExample(group, {
+      url: url.href,
+      status,
+      query,
+      headers: entries(request.headers).map((x) => ({
+        name: String(x.name ?? ""),
+        value:
+          isSensitive(String(x.name), extra) ||
+          !safeHeaders.has(String(x.name).toLowerCase())
+            ? MASK
+            : String(x.value ?? ""),
+      })),
+      body: body(request.postData, extra),
+      response: responseExample(entry.response, extra),
+    });
   }
   return {
     total: har.log.entries.length,
@@ -208,7 +232,7 @@ export function markdown(report) {
     "",
     `共 ${report.total} 条请求，${report.endpoints.length} 个接口，跳过 ${report.skipped} 条无效请求。`,
     "",
-    "> 此文档来自请求样本，并非官方 API 合约。示例最多保留每接口前 5 条；仅按字段名脱敏，不保证清除所有隐私信息。分享前请检查路径、正文和自定义字段。cURL 为 Bash/zsh 语法，脱敏后通常不能直接认证。",
+    "> 此文档来自请求样本，并非官方 API 合约。每个接口最多保留 5 条代表性示例，并优先覆盖不同 HTTP 状态；仅按字段名脱敏，不保证清除所有隐私信息。分享前请检查路径、正文和自定义字段。cURL 为 Bash/zsh 语法，脱敏后通常不能直接认证。",
     "",
   ];
   for (const group of report.endpoints) {

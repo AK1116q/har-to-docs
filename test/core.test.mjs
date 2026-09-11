@@ -76,6 +76,42 @@ test("non-JSON bodies and base64 are omitted, sample retention is bounded", () =
   assert.ok(!markdown(report).includes("raw private stuff"));
   assert.ok(!markdown(report).includes("cHJpdmF0ZQ=="));
 });
+test("sample retention prefers distinct HTTP statuses after repeated successes", () => {
+  const base = structuredClone(sample.log.entries[0]);
+  const entries = Array.from({ length: 8 }, (_, index) => {
+    const item = structuredClone(base);
+    item.response.status = index < 7 ? 200 : 500;
+    item.response.content.text = JSON.stringify({ index, token: "hidden" });
+    return item;
+  });
+  const endpoint = collectHar({ log: { entries } }).endpoints[0];
+  assert.equal(endpoint.count, 8);
+  assert.equal(endpoint.examples.length, 5);
+  assert.deepEqual(
+    [...new Set(endpoint.examples.map((item) => item.status))].sort(),
+    [200, 500],
+  );
+});
+test("malformed HAR member arrays are ignored and queryString fallbacks reach cURL", () => {
+  const entry = structuredClone(sample.log.entries[0]);
+  entry.request.url = "https://example.test/api";
+  entry.request.headers = null;
+  entry.request.postData = { params: [null, { name: "q", value: "ok" }] };
+  entry.request.queryString = [
+    null,
+    { name: "q", value: "one" },
+    { name: "q", value: "two" },
+  ];
+  const endpoint = collectHar({ log: { entries: [entry] } }).endpoints[0];
+  assert.deepEqual(endpoint.queryNames, ["q"]);
+  assert.equal(endpoint.examples[0].headers.length, 0);
+  assert.equal(endpoint.examples[0].query.length, 2);
+  assert.ok(endpoint.examples[0].url.includes("q=one"));
+  assert.ok(endpoint.examples[0].url.includes("q=two"));
+  assert.ok(
+    curl(endpoint.examples[0], endpoint.method).includes("?q=one&q=two"),
+  );
+});
 test("cURL exports valid continuations with quoted request data", () => {
   const group = collectHar(sample).endpoints.find((x) => x.method === "POST");
   const command = curl(group.examples[0], group.method);

@@ -105,7 +105,7 @@ function renderDetail() {
     group.description = note.value;
   };
   const heading = document.createElement("h3");
-  heading.textContent = `请求示例（保留前 ${group.examples.length} 条）`;
+  heading.textContent = `代表性请求示例（${group.examples.length} 条）`;
   const select = document.createElement("select");
   select.setAttribute("aria-label", "请求示例");
   for (const [index, example] of group.examples.entries()) {
