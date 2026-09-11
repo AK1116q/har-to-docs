@@ -1,0 +1,16 @@
+{
+  "name": "har-to-docs",
+  "version": "0.1.0",
+  "description": "Local-first HAR explorer and redacted Markdown API documentation generator",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test",
+    "cli": "node bin/cli.mjs"
+  },
+  "license": "MIT"
+}

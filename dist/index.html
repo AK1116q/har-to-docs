@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="在本地将 HAR 请求记录整理为脱敏的 API 文档"
+    />
+    <title>HAR to Docs · 接口整理器</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23116b57'/%3E%3Ctext x='7' y='28' fill='white' font-size='25'%3EH%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="./"
+        ><span class="logo">H</span> HAR to Docs <small>接口整理器</small></a
+      ><span class="local">● 本地处理</span>
+    </header>
+    <main>
+      <div class="heading">
+        <div>
+          <p class="eyebrow">FROM REQUESTS TO REFERENCE</p>
+          <h1>请求记录，变成接口文档。</h1>
+          <p>导入 HAR，整理参数和响应，再导出一份清晰的 Markdown。</p>
+        </div>
+        <button id="sample" class="secondary">试用示例 ↗</button>
+      </div>
+      <section id="drop" class="import">
+        <div>
+          <strong>拖入一个 .har 文件</strong>
+          <p>或选择文件 · 最大 25 MB · 内容不上传</p>
+        </div>
+        <label class="button"
+          >选择 HAR 文件<input
+            id="file"
+            type="file"
+            accept=".har,.json,application/json"
+            class="sr"
+        /></label>
+      </section>
+      <div class="settings">
+        <label for="redact">额外脱敏字段</label
+        ><input
+          id="redact"
+          placeholder="例如 email,user_id（逗号分隔）"
+        /><button id="apply" class="secondary">应用规则</button>
+      </div>
+      <p class="hint">
+        默认隐藏令牌、Cookie 等常见敏感字段；非 JSON
+        正文省略。分享前仍需检查路径和正文中的个人信息。
+      </p>
+      <div id="status" role="status" aria-live="polite">
+        尚未导入文件。可先试用内置示例。
+      </div>
+      <section class="workspace">
+        <aside>
+          <div class="section-title">
+            <h2>接口目录</h2>
+            <span id="count">0</span>
+          </div>
+          <label class="sr" for="search">搜索接口</label
+          ><input
+            id="search"
+            type="search"
+            placeholder="搜索域名、路径或方法"
+          />
+          <div id="list"><p class="empty">你的接口会出现在这里。</p></div>
+        </aside>
+        <article id="detail">
+          <div class="empty-state">
+            <span class="big">{ }</span>
+            <h2>把散落的请求整理好</h2>
+            <p>
+              同一来源、方法和路径会自动归组。<br />选择接口，查看参数、响应与调用示例。
+            </p>
+          </div>
+        </article>
+      </section>
+      <footer>
+        <span>纯本地 · 零依赖 · 开源工具</span
+        ><button id="export" disabled>导出 Markdown ↓</button>
+      </footer>
+    </main>
+    <script type="module" src="app.mjs"></script>
+  </body>
+</html>
