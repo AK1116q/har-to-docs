@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — 2026-09-12
+
+- Reworked README in English for a wider GitHub audience.
+- Improved large result rendering with cached search keys, batched DOM insertion, debounced filtering, and truncated in-page previews.
+- Refined the interface with a stronger tool layout, calmer surfaces, and clearer interaction states.
+
 ## 0.2.0 — 2026-09-12
 
 - 请求示例改为最多 5 条代表性样本，并优先覆盖不同 HTTP 状态，减少漏看错误响应。

@@ -4,9 +4,18 @@ let raw;
 let report;
 let selected;
 let revision = 0;
+let searchTimer;
 const status = (text) => {
   $("status").textContent = text;
 };
+function preview(value) {
+  const text =
+    typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  return text.length > 9000
+    ? text.slice(0, 9000) +
+        "\n…preview truncated; export Markdown for full content"
+    : text;
+}
 function download(text, name) {
   const url = URL.createObjectURL(
     new Blob([text], { type: "text/markdown;charset=utf-8" }),
@@ -21,6 +30,8 @@ function analyze(value, label) {
   const next = collectHar(value, $("redact").value.split(","));
   raw = value;
   report = next;
+  for (const group of report.endpoints)
+    group.searchKey = group.key.toLowerCase();
   selected = report.endpoints[0]?.key;
   $("search").value = "";
   $("export").disabled = !report.endpoints.length;
@@ -54,7 +65,8 @@ function renderList() {
   const term = $("search").value.toLowerCase();
   $("list").replaceChildren();
   const groups =
-    report?.endpoints.filter((x) => x.key.toLowerCase().includes(term)) ?? [];
+    report?.endpoints.filter((x) => x.searchKey.includes(term)) ?? [];
+  const fragment = document.createDocumentFragment();
   for (const group of groups) {
     const button = document.createElement("button");
     button.className = "endpoint" + (selected === group.key ? " selected" : "");
@@ -72,8 +84,9 @@ function renderList() {
       renderList();
       renderDetail();
     };
-    $("list").append(button);
+    fragment.append(button);
   }
+  $("list").append(fragment);
   if (!groups.length) {
     const p = document.createElement("p");
     p.className = "empty";
@@ -118,6 +131,7 @@ function renderDetail() {
   function show() {
     content.replaceChildren();
     const example = group.examples[Number(select.value)];
+    const fragment = document.createDocumentFragment();
     const items = [
       ["全部查询参数名", group.queryNames],
       ["本次查询参数", example.query],
@@ -130,10 +144,10 @@ function renderDetail() {
       const h = document.createElement("h3");
       h.textContent = name;
       const pre = document.createElement("pre");
-      pre.textContent =
-        typeof value === "string" ? value : JSON.stringify(value, null, 2);
-      content.append(h, pre);
+      pre.textContent = preview(value);
+      fragment.append(h, pre);
     }
+    content.append(fragment);
   }
   select.onchange = show;
   target.append(title, meta, label, note, heading, select, content);
@@ -166,7 +180,10 @@ $("apply").onclick = () => {
     status(error.message);
   }
 };
-$("search").oninput = renderList;
+$("search").oninput = () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(renderList, 80);
+};
 $("export").onclick = () => {
   if (report) download(markdown(report), "api-reference.md");
 };

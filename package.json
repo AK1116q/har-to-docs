@@ -1,6 +1,6 @@
 {
   "name": "har-to-docs",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local-first HAR explorer and redacted Markdown API documentation generator",
   "type": "module",
   "private": true,
